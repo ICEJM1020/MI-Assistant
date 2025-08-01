@@ -133,7 +133,7 @@ function ensureReportFile(patient) {
   try {
     if (!fs$1.existsSync(report_file)) {
       console.log("Report file not found. Creating a new one...");
-      const reportContent = JSON.stringify({});
+      const reportContent = JSON.stringify({ "rawReport": "", "summary": "" });
       fs$1.writeFileSync(report_file, reportContent, "utf8");
       console.log("Report file created successfully.");
     } else {
