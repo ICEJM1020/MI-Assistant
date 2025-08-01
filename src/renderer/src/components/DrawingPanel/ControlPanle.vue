@@ -35,6 +35,7 @@ export default {
             seconds: 60,
 
             isSwitching: false,
+            isWindowFocused: true,
         };
     },
     mounted() {
@@ -58,9 +59,9 @@ export default {
         this.iatWS = null;
         this.countdownInterval = null;
         const script = document.createElement('script');
-        script.src = '/recorderTools/index.umd.js';
+        script.src = './recorderTools/index.umd.js';
         script.onload = () => {
-            this.recorder = new window.RecorderManager("/recorderTools");
+            this.recorder = new window.RecorderManager("./recorderTools");
             this.setupRecorderEvents();
         }
         document.head.appendChild(script);
@@ -75,11 +76,21 @@ export default {
 
         window.addEventListener('keydown', this.handleKeyDown);
         window.addEventListener('keyup', this.handleKeyUp);
+        
+        // 添加窗口焦点事件监听
+        window.addEventListener('focus', this.onWindowFocus);
+        window.addEventListener('blur', this.onWindowBlur);
     },
     destroyed() {
         const hidebtn = document.getElementById("hidebtn");
         hidebtn.removeEventListener("mousedown", this.hideStroke);
         hidebtn.removeEventListener("mouseup", this.showStroke);
+
+        // 移除所有事件监听器
+        window.removeEventListener('keydown', this.handleKeyDown);
+        window.removeEventListener('keyup', this.handleKeyUp);
+        window.removeEventListener('focus', this.onWindowFocus);
+        window.removeEventListener('blur', this.onWindowBlur);
 
         if (this.countdownInterval) {
             clearInterval(this.countdownInterval)
@@ -354,8 +365,10 @@ export default {
             link.click();
         },
         handleKeyDown(event) {
+            if (!document.hasFocus() || !this.isWindowFocused) return;
+            
             const active = document.activeElement
-            if (active && active.tagName.toLowerCase() === 'textarea') return;
+            if (active && (active.tagName.toLowerCase() === 'textarea' || active.tagName.toLowerCase() === 'input')) return;
             if (event.key === ' ' || event.key === 'Spacebar') {
                 event.preventDefault();
                 if (!this.spaceDown) {
@@ -365,11 +378,25 @@ export default {
             }
         },
         handleKeyUp(event) {
+            if (!document.hasFocus() || !this.isWindowFocused) return;
+            
             const active = document.activeElement
-            if (active && active.tagName.toLowerCase() === 'textarea') return;
+            if (active && (active.tagName.toLowerCase() === 'textarea' || active.tagName.toLowerCase() === 'input')) return;
             if ((event.key === ' ' || event.key === 'Spacebar') && this.spaceDown) {
                 this.spaceDown = false;
                 this.toggleRecording();
+            }
+        },
+        onWindowFocus() {
+            this.isWindowFocused = true;
+        },
+        onWindowBlur() {
+            this.isWindowFocused = false;
+            if (this.spaceDown) {
+                this.spaceDown = false;
+            }
+            if (this.btnStatus === "CONNECTING" || this.btnStatus === "OPEN") {
+                this.recorder.stop();
             }
         }
     }

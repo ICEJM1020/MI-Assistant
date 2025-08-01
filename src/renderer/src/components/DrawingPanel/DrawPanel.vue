@@ -46,6 +46,7 @@
                 patientInfoStore: null,
 
                 canvasActive: false,
+                saveTimeout: null,
             };
         },
         computed: {
@@ -139,6 +140,10 @@
         },
         destroyed() {
             document.removeEventListener('keydown', this.handleKeyDown);
+            // 清理定时器
+            if (this.saveTimeout) {
+                clearTimeout(this.saveTimeout);
+            }
         },
         methods: {
             getCoordinate(event) {
@@ -179,6 +184,13 @@
             },
             onImageUpdate(URL) {
                 if (this.canvasStore) this.canvasStore.setCurrentImgURL(URL);
+                // 防止频繁更新
+                if (this.saveTimeout) {
+                    clearTimeout(this.saveTimeout);
+                }
+                this.saveTimeout = setTimeout(() => {
+                    this.saveCanvasData(this.currentPatient, this.currentBackgroundID);
+                }, 500);
             },
             saveCanvasData(patient, id) {
                 const drawer = this.$refs.VueCanvasDrawing;

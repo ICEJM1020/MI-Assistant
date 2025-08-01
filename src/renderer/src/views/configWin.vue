@@ -1,5 +1,5 @@
 <script setup>
-    import { ref, reactive } from 'vue'
+    import { ref, reactive, onMounted } from 'vue'
     
     const configForm = reactive({
         apiURL: '',
@@ -22,15 +22,12 @@
             }
         });
         alert("Config Saved")
-    }
+    };
 
-    window.addEventListener("load", () => {
+    onMounted(() => {
         configForm.apiURL = window.localStorage.getItem("apiURL");
         configForm.apiKEY = window.localStorage.getItem("apiKEY");
         configForm.MODEL = window.localStorage.getItem("MODEL");
-        document.getElementById("apiURL").value = window.localStorage.getItem("apiURL");
-        document.getElementById("apiKEY").value = window.localStorage.getItem("apiKEY");
-        document.getElementById("MODEL").value = window.localStorage.getItem("MODEL");
     });
 
     async function testAPI(){

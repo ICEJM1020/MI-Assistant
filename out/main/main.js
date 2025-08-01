@@ -690,6 +690,7 @@ routers.push(
     "updkeys-chat",
     "asyncevent",
     async (api, data = {}) => {
+      console.log(data.data);
       const res = await Updkeys(data.data);
       return res;
     }
