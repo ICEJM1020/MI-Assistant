@@ -26,6 +26,7 @@ const defaultConfig = {
   apiKEY: "NEED_YOUR_API_KEY",
   apiURL: "NEED_YOUR_API_URL",
   MODEL: "NEED_YOUR_MODEL",
+  summaryModule: "",
 };
 
 export function ensureConfigFile() {

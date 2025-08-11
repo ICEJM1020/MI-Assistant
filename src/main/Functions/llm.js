@@ -1,5 +1,5 @@
 import axios from "axios";
-import { sys_msg_addcat, sys_msg_summarize, sys_msg_updkeys } from "./prompts";
+import { get_sys_msg_addcat, get_sys_msg_summarize, get_sys_msg_updkeys } from "./prompts";
 
 export async function testAPI(data){
     var res = "";
@@ -27,6 +27,7 @@ export async function testAPI(data){
 
 export async function AddCatChat(data){
     var res = "";
+    const sys_msg_addcat = await get_sys_msg_addcat();
     const req = {
         model : data.request.model,
         messages : [sys_msg_addcat, ...data.request.messages]
@@ -55,6 +56,7 @@ export async function AddCatChat(data){
 
 export async function Summarize(data){
     var res = "";
+    const sys_msg_summarize = await get_sys_msg_summarize();
     const req = {
         model : data.request.model,
         messages : [sys_msg_summarize, ...data.request.messages]
@@ -83,6 +85,7 @@ export async function Summarize(data){
 
 export async function Updkeys(data){
     var res = "";
+    const sys_msg_updkeys = get_sys_msg_updkeys();
     const req = {
         model : data.request.model,
         messages : [sys_msg_updkeys, ...data.request.messages]

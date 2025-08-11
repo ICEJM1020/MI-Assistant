@@ -4,7 +4,8 @@
     const configForm = reactive({
         apiURL: '',
         apiKEY: '',
-        MODEL: ''
+        MODEL: '',
+        summaryModule: '',
     })
     const isLoading = ref(false);
     
@@ -12,13 +13,15 @@
         window.localStorage.setItem('apiURL', configForm.apiURL)
         window.localStorage.setItem('apiKEY', configForm.apiKEY)
         window.localStorage.setItem('MODEL', configForm.MODEL)
+        window.localStorage.setItem('summaryModule', configForm.summaryModule)
         window.api.invoke('renderer-to-main', {
             name: "save-config",
             event: "event",
             data:{
                 'apiURL': configForm.apiURL,
                 'apiKEY': configForm.apiKEY,
-                'MODEL': configForm.MODEL
+                'MODEL': configForm.MODEL,
+                'summaryModule': configForm.summaryModule,
             }
         });
         alert("Config Saved")
@@ -28,6 +31,7 @@
         configForm.apiURL = window.localStorage.getItem("apiURL");
         configForm.apiKEY = window.localStorage.getItem("apiKEY");
         configForm.MODEL = window.localStorage.getItem("MODEL");
+        configForm.summaryModule = window.localStorage.getItem("summaryModule");
     });
 
     async function testAPI(){
@@ -82,6 +86,16 @@
                 autocomplete="off"
             />
         </el-form-item>
+        <el-form-item label="summaryModule">
+            <el-input
+                id="summary module"
+                v-model="configForm.summaryModule"
+                type="textarea"
+                :autosize="{ minRows: 4, maxRows: 4 }"
+                autocomplete="off"
+                placeholder="Input the summary module..."
+            />
+        </el-form-item>
         <el-form-item>
         <el-button type="default" @click="submitForm()">
             Save
@@ -102,6 +116,10 @@
 }
 
 .configForm .el-input {
+    width: 80%;
+}
+
+.configForm .el-textarea {
     width: 80%;
 }
 
