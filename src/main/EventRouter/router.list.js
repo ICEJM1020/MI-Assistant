@@ -3,7 +3,7 @@ import { loadExistedTestList, loadConfig, saveConfig, loadHistory, saveHistory, 
 import { testAPI, AddCatChat, Summarize, Updkeys } from '../Functions/llm'
 import { createConfigWindow } from '../configView'
 import { createAddCatWindow } from "../addCatView";
-import { videoExtract } from '../Functions/video2frames';
+import { videoProcessor, videoExtract } from '../Functions/video2frames';
 
 const routers = new Array();
 

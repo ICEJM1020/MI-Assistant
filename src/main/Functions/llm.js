@@ -16,10 +16,12 @@ export async function testAPI(data){
     })
     .then(function (response) {
         res = response.data.choices[0].message.content;
+        // console.log("content: ", response.data.choices[0].message.content);
+        // console.log("resoning: ", response.data.choices[0].message.reasoning_content);
     })
     .catch(function (error) {
         const errs = error.response.data.error
-        res = error.status + '\n' + errs.code + ' ' + errs.message;
+        res = error.status + '\n' + error.code + ' ' + error.message;
     });
     return res
 }
@@ -46,10 +48,11 @@ export async function AddCatChat(data){
     })
     .then(function (response) {
         res = response.data.choices[0].message.content;
+        // console.log("res: ", response);
     })
     .catch(function (error) {
         const errs = error.response.data.error
-        res = error.status + '\n' + errs.code + ' ' + errs.message;
+        res = error.status + '\n' + error.code + ' ' + error.message;
     });
     return res
 }
@@ -75,10 +78,11 @@ export async function Summarize(data){
     })
     .then(function (response) {
         res = response.data.choices[0].message.content;
+        // console.log("res: ", response);
     })
     .catch(function (error) {
         const errs = error.response.data.error
-        res = error.status + '\n' + errs.code + ' ' + errs.message;
+        res = error.status + '\n' + error.code + ' ' + error.message;
     });
     return res
 }

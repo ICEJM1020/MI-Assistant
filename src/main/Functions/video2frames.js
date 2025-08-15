@@ -1,7 +1,18 @@
 import ffmpeg from 'fluent-ffmpeg';
+import ffmpegStatic from 'ffmpeg-static';
 import { join } from 'path';
 import { existsSync, mkdirSync, readFileSync, unlinkSync, readdirSync } from 'fs';
 import { tmpdir } from 'os';
+import { app } from 'electron';
+
+// 设置ffmpeg打包后的路径
+let ffmpegPath = ffmpegStatic;
+if (app && app.isPackaged) {
+    const resourcesPath = process.resourcesPath;
+    ffmpegPath = ffmpegPath.replace('app.asar', 'app.asar.unpacked');
+}
+
+ffmpeg.setFfmpegPath(ffmpegPath);
 
 class VideoProcessor {
     constructor() {
@@ -207,7 +218,7 @@ class VideoProcessor {
     }
 }
 
-const videoProcessor = new VideoProcessor();
+export const videoProcessor = new VideoProcessor();
 
 export async function videoExtract(videoPath) {
     try {

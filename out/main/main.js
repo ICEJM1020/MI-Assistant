@@ -5,6 +5,7 @@ const electron = require("electron");
 const utils = require("@electron-toolkit/utils");
 const axios = require("axios");
 const ffmpeg = require("fluent-ffmpeg");
+const ffmpegStatic = require("ffmpeg-static");
 const fs$2 = require("fs");
 const os = require("os");
 const { dialog, globalShortcut } = require("electron");
@@ -370,9 +371,11 @@ async function testAPI(data) {
     }
   }).then(function(response) {
     res = response.data.choices[0].message.content;
+    console.log("content: ", response.data.choices[0].message.content || "nothing");
+    console.log("resoning: ", response.data.choices[0].message.reasoning_content || "nothing");
   }).catch(function(error) {
-    const errs = error.response.data.error;
-    res = error.status + "\n" + errs.code + " " + errs.message;
+    error.response.data.error;
+    res = error.status + "\n" + error.code + " " + error.message;
   });
   return res;
 }
@@ -395,9 +398,10 @@ async function AddCatChat(data) {
     }
   }).then(function(response) {
     res = response.data.choices[0].message.content;
+    console.log("res: ", response);
   }).catch(function(error) {
-    const errs = error.response.data.error;
-    res = error.status + "\n" + errs.code + " " + errs.message;
+    error.response.data.error;
+    res = error.status + "\n" + error.code + " " + error.message;
   });
   return res;
 }
@@ -408,6 +412,7 @@ async function Summarize(data) {
     model: data.request.model,
     messages: [sys_msg_summarize, ...data.request.messages]
   };
+  console.log(req);
   await axios({
     url: data.apiURL,
     method: "POST",
@@ -420,9 +425,11 @@ async function Summarize(data) {
     }
   }).then(function(response) {
     res = response.data.choices[0].message.content;
+    console.log("res: ", response);
   }).catch(function(error) {
-    const errs = error.response.data.error;
-    res = error.status + "\n" + errs.code + " " + errs.message;
+    error.response.data.error;
+    res = error.status + "\n" + error.code + " " + error.message;
+    console.log(res);
   });
   return res;
 }
@@ -548,6 +555,12 @@ function createAddCatWindow() {
     existedWindows.get("main").webContents.send("main-to-renderer", { child: "addcat", action: "closed" });
   });
 }
+let ffmpegPath = ffmpegStatic;
+if (electron.app && electron.app.isPackaged) {
+  process.resourcesPath;
+  ffmpegPath = ffmpegPath.replace("app.asar", "app.asar.unpacked");
+}
+ffmpeg.setFfmpegPath(ffmpegPath);
 class VideoProcessor {
   constructor() {
     this.currentTaskId = null;
@@ -716,10 +729,10 @@ class VideoProcessor {
     };
   }
 }
-const videoProcessor$1 = new VideoProcessor();
+const videoProcessor = new VideoProcessor();
 async function videoExtract(videoPath) {
   try {
-    const result = await videoProcessor$1.extractVideoFrames(videoPath, (progress) => {
+    const result = await videoProcessor.extractVideoFrames(videoPath, (progress) => {
       const mainWindow = global.existedWindows?.get("main");
       if (mainWindow) {
         mainWindow.webContents.send("video-extraction-progress", progress);
