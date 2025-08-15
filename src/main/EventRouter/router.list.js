@@ -3,6 +3,7 @@ import { loadExistedTestList, loadConfig, saveConfig, loadHistory, saveHistory, 
 import { testAPI, AddCatChat, Summarize, Updkeys } from '../Functions/llm'
 import { createConfigWindow } from '../configView'
 import { createAddCatWindow } from "../addCatView";
+import { videoExtract } from '../Functions/video2frames';
 
 const routers = new Array();
 
@@ -188,5 +189,36 @@ routers.push(
     )
 )
 
+routers.push(
+    new EventRouter(
+        'extract-video-frames',
+        'asyncevent',
+        async (api, data={}) => {
+            const videoPath = data.data.videoPath;
+            return await videoExtract(videoPath);
+        }
+    )
+)
+
+routers.push(
+    new EventRouter(
+        'cancel-video-extraction',
+        'event',
+        (api, data={}) => {
+            videoProcessor.cancelCurrentTask();
+            return { success: true };
+        }
+    )
+)
+
+routers.push(
+    new EventRouter(
+        'get-video-extraction-status',
+        'event',
+        (api, data={}) => {
+            return videoProcessor.getStatus();
+        }
+    )
+)
 
 export default routers;

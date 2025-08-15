@@ -23,9 +23,12 @@ export function createFolder(folderPath) {
 
 // Define default parameters
 const defaultConfig = {
-  apiKEY: "NEED_YOUR_API_KEY",
-  apiURL: "NEED_YOUR_API_URL",
-  MODEL: "NEED_YOUR_MODEL",
+  apiKEY1: "NEED_YOUR_API_KEY1",
+  apiURL1: "NEED_YOUR_API_URL1",
+  MODEL1: "NEED_YOUR_MODEL1",
+  apiKEY2: "NEED_YOUR_API_KEY2",
+  apiURL2: "NEED_YOUR_API_URL2",
+  MODEL2: "NEED_YOUR_MODEL2",
   summaryModule: "",
 };
 

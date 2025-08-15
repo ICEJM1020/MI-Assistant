@@ -4,6 +4,9 @@ const path$2 = require("path");
 const electron = require("electron");
 const utils = require("@electron-toolkit/utils");
 const axios = require("axios");
+const ffmpeg = require("fluent-ffmpeg");
+const fs$2 = require("fs");
+const os = require("os");
 const { dialog, globalShortcut } = require("electron");
 function createGlobalShortcuts() {
   globalShortcut.register("CommandOrControl+Alt+I", () => {
@@ -80,9 +83,12 @@ function createFolder(folderPath) {
   }
 }
 const defaultConfig = {
-  apiKEY: "NEED_YOUR_API_KEY",
-  apiURL: "NEED_YOUR_API_URL",
-  MODEL: "NEED_YOUR_MODEL",
+  apiKEY1: "NEED_YOUR_API_KEY1",
+  apiURL1: "NEED_YOUR_API_URL1",
+  MODEL1: "NEED_YOUR_MODEL1",
+  apiKEY2: "NEED_YOUR_API_KEY2",
+  apiURL2: "NEED_YOUR_API_URL2",
+  MODEL2: "NEED_YOUR_MODEL2",
   summaryModule: ""
 };
 function ensureConfigFile() {
@@ -422,7 +428,7 @@ async function Summarize(data) {
 }
 async function Updkeys(data) {
   var res = "";
-  const sys_msg_updkeys = get_sys_msg_updkeys();
+  const sys_msg_updkeys = await get_sys_msg_updkeys();
   const req = {
     model: data.request.model,
     messages: [sys_msg_updkeys, ...data.request.messages]
@@ -440,8 +446,8 @@ async function Updkeys(data) {
   }).then(function(response) {
     res = response.data.choices[0].message.content;
   }).catch(function(error) {
-    const errs = error.response.data.error;
-    res = error.status + "\n" + errs.code + " " + errs.message;
+    error.response.data.error;
+    res = error.status + "\n" + error.code + " " + error.message;
   });
   return res;
 }
@@ -541,6 +547,195 @@ function createAddCatWindow() {
     existedWindows.delete("addcat");
     existedWindows.get("main").webContents.send("main-to-renderer", { child: "addcat", action: "closed" });
   });
+}
+class VideoProcessor {
+  constructor() {
+    this.currentTaskId = null;
+    this.isProcessing = false;
+  }
+  // 生成唯一的任务ID
+  generateTaskId() {
+    return `video_task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+  // 取消当前任务
+  cancelCurrentTask() {
+    if (this.currentTaskId) {
+      this.currentTaskId = null;
+      this.isProcessing = false;
+    }
+  }
+  // 提取视频帧
+  async extractVideoFrames(videoPath, progressCallback) {
+    return new Promise((resolve, reject) => {
+      const taskId = this.generateTaskId();
+      this.currentTaskId = taskId;
+      this.isProcessing = true;
+      const tempDir = path$2.join(os.tmpdir(), `video_frames_${taskId}`);
+      if (!fs$2.existsSync(tempDir)) {
+        fs$2.mkdirSync(tempDir, { recursive: true });
+      }
+      let totalFrames = 0;
+      let processedFrames = 0;
+      const frames = [];
+      ffmpeg.ffprobe(videoPath, (err, metadata) => {
+        if (err) {
+          this.cleanup(tempDir);
+          reject(new Error(`Failed to probe video: ${err.message}`));
+          return;
+        }
+        if (this.currentTaskId !== taskId) {
+          this.cleanup(tempDir);
+          reject(new Error("Task was cancelled"));
+          return;
+        }
+        const duration = metadata.format.duration;
+        const fps = metadata.streams.find((s) => s.codec_type === "video")?.r_frame_rate;
+        const [num, den] = fps.split("/").map(Number);
+        const frameRate = num / den;
+        totalFrames = Math.floor(duration * frameRate);
+        const outputPattern = path$2.join(tempDir, "frame_%06d.jpg");
+        const command = ffmpeg(videoPath).outputOptions([
+          "-vf",
+          "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+          // 确保宽高为偶数
+          "-q:v",
+          "2"
+          // 质量
+        ]).output(outputPattern).on("start", (commandLine) => {
+          if (progressCallback) {
+            progressCallback({
+              type: "start",
+              taskId,
+              totalFrames,
+              message: `Starting extracting`
+            });
+          }
+        }).on("progress", (progress) => {
+          if (this.currentTaskId !== taskId) {
+            command.kill("SIGKILL");
+            return;
+          }
+          if (progress.frames) {
+            processedFrames = progress.frames;
+            if (progressCallback) {
+              progressCallback({
+                type: "progress",
+                taskId,
+                processedFrames,
+                totalFrames,
+                percent: Math.round(processedFrames / totalFrames * 100),
+                message: `Extracted ${processedFrames} frames`
+              });
+            }
+          }
+        }).on("end", async () => {
+          if (this.currentTaskId !== taskId) {
+            this.cleanup(tempDir);
+            reject(new Error("Task was cancelled"));
+            return;
+          }
+          try {
+            const frameFiles = fs$2.readdirSync(tempDir).filter((file) => file.startsWith("frame_") && file.endsWith(".jpg")).sort();
+            for (const frameFile of frameFiles) {
+              const framePath = path$2.join(tempDir, frameFile);
+              const frameBuffer = fs$2.readFileSync(framePath);
+              const base64Data = `data:image/jpeg;base64,${frameBuffer.toString("base64")}`;
+              frames.push(base64Data);
+              if (progressCallback) {
+                progressCallback({
+                  type: "loading",
+                  taskId,
+                  loadedFrames: frames.length,
+                  totalFrames: frameFiles.length,
+                  percent: Math.round(frames.length / frameFiles.length * 100),
+                  message: `${frames.length} frames loaded`
+                });
+              }
+            }
+            this.cleanup(tempDir);
+            this.isProcessing = false;
+            if (progressCallback) {
+              progressCallback({
+                type: "complete",
+                taskId,
+                totalFrames: frames.length,
+                message: `Successfully extracted ${frames.length} frames`
+              });
+            }
+            resolve({
+              taskId,
+              frames,
+              totalFrames: frames.length,
+              duration
+            });
+          } catch (error) {
+            this.cleanup(tempDir);
+            this.isProcessing = false;
+            reject(new Error(`Failed to process frames: ${error.message}`));
+          }
+        }).on("error", (err2) => {
+          console.error("FFmpeg error:", err2);
+          this.cleanup(tempDir);
+          this.isProcessing = false;
+          if (this.currentTaskId === taskId) {
+            reject(new Error(`FFmpeg processing failed: ${err2.message}`));
+          } else {
+            reject(new Error("Task was cancelled"));
+          }
+        });
+        command.run();
+      });
+    });
+  }
+  // 清理临时文件
+  cleanup(tempDir) {
+    try {
+      if (fs$2.existsSync(tempDir)) {
+        const files = fs$2.readdirSync(tempDir);
+        for (const file of files) {
+          fs$2.unlinkSync(path$2.join(tempDir, file));
+        }
+        setTimeout(() => {
+          try {
+            if (fs$2.existsSync(tempDir)) {
+              require("fs").rmdirSync(tempDir);
+            }
+          } catch (e) {
+            console.warn("Could not remove temp directory:", e.message);
+          }
+        }, 100);
+      }
+    } catch (error) {
+      console.warn("Cleanup error:", error.message);
+    }
+  }
+  getStatus() {
+    return {
+      isProcessing: this.isProcessing,
+      currentTaskId: this.currentTaskId
+    };
+  }
+}
+const videoProcessor$1 = new VideoProcessor();
+async function videoExtract(videoPath) {
+  try {
+    const result = await videoProcessor$1.extractVideoFrames(videoPath, (progress) => {
+      const mainWindow = global.existedWindows?.get("main");
+      if (mainWindow) {
+        mainWindow.webContents.send("video-extraction-progress", progress);
+      }
+    });
+    return {
+      success: true,
+      data: result
+    };
+  } catch (error) {
+    console.error("Video extraction error:", error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 }
 const routers = new Array();
 routers.push(
@@ -708,9 +903,39 @@ routers.push(
     }
   )
 );
+routers.push(
+  new EventRouter(
+    "extract-video-frames",
+    "asyncevent",
+    async (api, data = {}) => {
+      const videoPath = data.data.videoPath;
+      return await videoExtract(videoPath);
+    }
+  )
+);
+routers.push(
+  new EventRouter(
+    "cancel-video-extraction",
+    "event",
+    (api, data = {}) => {
+      videoProcessor.cancelCurrentTask();
+      return { success: true };
+    }
+  )
+);
+routers.push(
+  new EventRouter(
+    "get-video-extraction-status",
+    "event",
+    (api, data = {}) => {
+      return videoProcessor.getStatus();
+    }
+  )
+);
 const basePath = electron.app.isPackaged ? electron.app.getAppPath() : __dirname;
 const configPath = path$2.join(electron.app.getPath("appData"), ".medai");
 const existedWindows = /* @__PURE__ */ new Map();
+global.existedWindows = existedWindows;
 function initRunning() {
   createFolder(configPath);
   createFolder(path$2.join(configPath, "test_configs"));

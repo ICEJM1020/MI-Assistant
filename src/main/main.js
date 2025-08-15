@@ -13,6 +13,9 @@ export const configPath = join(app.getPath('appData'), '.medai')
 
 export const existedWindows = new Map()
 
+// 导出 existedWindows 供其他模块使用
+global.existedWindows = existedWindows;
+
 
 function initRunning () {
   createFolder(configPath);

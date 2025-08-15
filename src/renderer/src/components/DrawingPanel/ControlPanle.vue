@@ -2,6 +2,7 @@
 import useDrawPanelStore from '@store/drawPanelStore';
 import { useMediaRecordingStore } from '@store/mediaRecordingStore';
 import usePatientInfoStore from '@store/patientInfoStore';
+import ImportDialog from './ImportDialog.vue';
 
 function debounce(func, wait) {
     let timeout;
@@ -18,6 +19,7 @@ function debounce(func, wait) {
 export default {
     name: "CanvasControler",
     components: {
+        ImportDialog,
     },
     data() {
         return {
@@ -36,6 +38,12 @@ export default {
 
             isSwitching: false,
             isWindowFocused: true,
+            showImportDialog: false,
+            
+            showVideoProgress: false,
+            videoProgress: 0,
+            videoProgressMessage: '',
+            isVideoProcessing: false,
         };
     },
     mounted() {
@@ -80,6 +88,9 @@ export default {
         // 添加窗口焦点事件监听
         window.addEventListener('focus', this.onWindowFocus);
         window.addEventListener('blur', this.onWindowBlur);
+        
+        // 添加视频提取进度监听
+        window.api.on('video-extraction-progress', this.handleVideoExtractionProgress);
     },
     destroyed() {
         const hidebtn = document.getElementById("hidebtn");
@@ -91,7 +102,14 @@ export default {
         window.removeEventListener('keyup', this.handleKeyUp);
         window.removeEventListener('focus', this.onWindowFocus);
         window.removeEventListener('blur', this.onWindowBlur);
+        
+        // 移除视频提取进度监听
+        window.api.off('video-extraction-progress', this.handleVideoExtractionProgress);
+        
+        // 取消任何正在进行的视频处理任务
+        this.cancelVideoExtraction();
 
+        // 清理录音相关资源
         if (this.countdownInterval) {
             clearInterval(this.countdownInterval)
         }
@@ -101,6 +119,21 @@ export default {
         if (this.iatWS) {
             this.iatWS.close()
         }
+
+        // 清理视频文件输入
+        if (this.$refs.videoInput) {
+            this.$refs.videoInput.value = '';
+        }
+        if (this.$refs.fileInput) {
+            this.$refs.fileInput.value = '';
+        }
+
+        // 清理背景图片URLs以释放内存
+        this.canvasBackgroundImages.forEach(url => {
+            if (url.startsWith('blob:')) {
+                URL.revokeObjectURL(url);
+            }
+        });
     },
     methods: {
         hideStroke() {
@@ -304,12 +337,21 @@ export default {
                 this.recorder.stop()
             }
         },
+        async showImportOptions() {
+            this.showImportDialog = true;
+        },
+        handleFolderImport() {
+            this.$refs.fileInput.click();
+        },
+        handleVideoImport() {
+            this.$refs.videoInput.click();
+        },
         setImage(event) {
             const files = Array.from(event.target.files);
             if (!files.length) return;
             this.canvasBackgroundImages = [];
 
-            const folderName = files[0].webkitRelativePath?.split('/')[0] || "未知文件夹";
+            const folderName = files[0].webkitRelativePath?.split('/')[0] || "Unknown";
             this.patientInfoStore.setCurrentPatient(folderName);
 
             const imgFiles = files.filter(file => file.type.startsWith('image/'));
@@ -318,12 +360,124 @@ export default {
                 const file = URL.createObjectURL(imgFiles[i]);
                 this.canvasBackgroundImages.push(file);
             }
-            console.log("pre:", this.patientInfoStore.switchPatient);
+            // 切换病人的一系列设置
             this.patientInfoStore.setSwitchPatient(true);
-            console.log("after:", this.patientInfoStore.switchPatient);
             this.canvasStore.setCanvasBackgroundID(0);
             this.canvasStore.setCanvasBackground(this.canvasBackgroundImages[0]);
             this.canvasBackgroundId = 0;
+        },
+        setVideo(event) {
+            const file = event.target.files[0];
+
+            // 显示进度
+            this.showVideoProgress = true;
+            this.isVideoProcessing = true;
+            this.videoProgress = 0;
+            this.videoProgressMessage = 'Starting extracting...';
+            
+            this.canvasBackgroundImages = [];
+            
+            const fileName = file.name.replace(/\.[^/.]+$/, "");
+            
+            this.patientInfoStore.setCurrentPatient(fileName);
+
+            this.extractVideoFrames(file.path);
+        },
+        async extractVideoFrames(videoPath) {
+            try {                
+                const result = await window.api.invoke('renderer-to-main-async', {
+                    name: "extract-video-frames",
+                    event: "asyncevent",
+                    data: { videoPath: videoPath }
+                });
+                
+                if (result.success) {
+                    if (!result.data || !result.data.frames)
+                        throw new Error('No frames');
+                    
+                    // 切换病人的一系列设置
+                    this.canvasBackgroundImages = result.data.frames;
+                    this.patientInfoStore.setSwitchPatient(true);
+                    this.canvasStore.setCanvasBackgroundID(0);
+                    if (this.canvasBackgroundImages.length > 0) {
+                        this.canvasStore.setCanvasBackground(this.canvasBackgroundImages[0]);
+                    }
+                    this.canvasBackgroundId = 0;
+                    
+                    this.videoProgressMessage = `Successfully extracted ${result.data.totalFrames} frames`;
+                    this.videoProgress = 100;
+                    
+                    setTimeout(() => {
+                        this.showVideoProgress = false;
+                        this.isVideoProcessing = false;
+                    }, 1500);
+                } else {
+                    this.videoProgressMessage = `error: ${result.error || 'Unknown error occurred'}`;
+                    console.error('Video extraction failed:', result);
+                    
+                    setTimeout(() => {
+                        this.showVideoProgress = false;
+                        this.isVideoProcessing = false;
+                    }, 2000);
+                }
+                
+            } catch (error) {
+                console.error('Video extraction failed:', error);
+                
+                this.videoProgressMessage = error;
+                console.error(errorMessage);
+                
+                setTimeout(() => {
+                    this.showVideoProgress = false;
+                    this.isVideoProcessing = false;
+                }, 2000);
+            }
+        },
+        async cancelVideoExtraction() {
+            try {
+                await window.api.invoke('renderer-to-main', {
+                    name: "cancel-video-extraction",
+                    event: "event",
+                    data: {}
+                });
+                
+                // 关闭进度
+                this.showVideoProgress = false;
+                this.isVideoProcessing = false;
+                this.videoProgress = 0;
+                this.videoProgressMessage = '';
+                
+            } catch (error) {
+                console.error('Failed to cancel video extraction:', error);
+            }
+        },
+        handleVideoExtractionProgress(progress) {
+            switch (progress.type) {
+                case 'start':
+                    this.showVideoProgress = true;
+                    this.isVideoProcessing = true;
+                    this.videoProgress = 0;
+                    this.videoProgressMessage = progress.message || 'Starting extracting...';
+                    break;
+                case 'progress':
+                    this.videoProgress = progress.percent || 0;
+                    this.videoProgressMessage = progress.message || `Processing... ${this.videoProgress}%`;
+                    break;
+                case 'loading':
+                    this.videoProgress = progress.percent || 0;
+                    this.videoProgressMessage = progress.message || `Loading... ${this.videoProgress}%`;
+                    break;
+                case 'complete':
+                    this.videoProgress = 100;
+                    this.videoProgressMessage = progress.message || 'Complete';
+                    setTimeout(() => {
+                        this.showVideoProgress = false;
+                        this.isVideoProcessing = false;
+                    }, 1500);
+                    break;
+                default:
+                    console.error('Unknown progress type:', progress);
+            }
         },
         _loadPreviousImage() {
             if (this.canvasBackgroundId - 1 < 0) return;
@@ -521,7 +675,14 @@ export default {
                                 @change="setImage"
                                 style="display: none;"
                             >
-                            <el-button type="default" size="large" round @click.prevent="$refs.fileInput.click()">
+                            <input
+                                ref="videoInput"
+                                type="file"
+                                accept="video/*"
+                                @change="setVideo"
+                                style="display: none;"
+                            >
+                            <el-button type="default" size="large" round @click.prevent="showImportOptions">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
                                     class="bi bi-folder" viewBox="0 0 16 16" style="margin: 3px">
                                     <path
@@ -567,9 +728,8 @@ export default {
                 </el-row>
                 <el-row :span="24" style="margin-top: 10px;">
                     <el-col :span="20" >
-                        <el-row style="font-size: 14px;">1. Press Import Button to Select the medical image folder.</el-row>
-                        <el-row style="font-size: 14px;">2. Press Previous/Next Button to move forward/backward in the medical
-                            image list.</el-row>
+                        <el-row style="font-size: 14px;">1. Press Import Button to Select the medical image folder or video file.</el-row>
+                        <el-row style="font-size: 14px;">2. Press Previous/Next Button to move forward/backward in the image list.</el-row>
                         <el-row style="font-size: 14px;">3. Press Export Button to generate PDF report.</el-row>
                         <el-row style="font-size: 14px;">4. Labeled Image will saved automatically.</el-row>
                     </el-col>
@@ -591,6 +751,36 @@ export default {
             </el-col>
         </el-row>
     </el-col>
+    
+    <div v-if="showVideoProgress" class="video-progress-overlay">
+        <div class="video-progress-modal">
+            <div class="progress-header">
+                <span>Frames extracting progress</span>
+                <el-button 
+                    v-if="isVideoProcessing" 
+                    type="danger" 
+                    size="small" 
+                    @click="cancelVideoExtraction"
+                >
+                    Cancel
+                </el-button>
+            </div>
+            <div class="progress-content">
+                <el-progress 
+                    :percentage="videoProgress" 
+                    :format="() => `${videoProgress}%`"
+                    :stroke-width="8"
+                />
+                <div class="progress-message">{{ videoProgressMessage }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <ImportDialog 
+        v-model="showImportDialog"
+        @import-folder="handleFolderImport"
+        @import-video="handleVideoImport"
+    />
 </template>
 
 <style scoped>
@@ -721,5 +911,48 @@ button:focus-visible {
 .transcribed-text-content.transcribing {
     color: #6c757d;
     font-style: italic;
+}
+
+
+/* 进度条样式 */
+.video-progress-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.video-progress-modal {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    min-width: 400px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    font-weight: 500;
+    font-size: 16px;
+}
+
+.progress-content {
+    margin-top: 10px;
+}
+
+.progress-message {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #666;
+    text-align: center;
 }
 </style>

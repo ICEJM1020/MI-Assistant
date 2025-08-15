@@ -92,10 +92,10 @@ async function summarize() {
         name: 'summarize-chat',
         event: 'asyncevent',
         data: {
-            'apiURL': window.localStorage.getItem("apiURL"),
-            'apiKEY': window.localStorage.getItem("apiKEY"),
+            'apiURL': window.localStorage.getItem("apiURL1"),
+            'apiKEY': window.localStorage.getItem("apiKEY1"),
             'request': {
-                model: window.localStorage.getItem("MODEL"),
+                model: window.localStorage.getItem("MODEL1"),
                 messages: messages,
             }
         }
@@ -135,10 +135,10 @@ async function updateKeypoints() {
         name: 'updkeys-chat',
         event: 'asyncevent',
         data: {
-            'apiURL': window.localStorage.getItem("apiURL"),
-            'apiKEY': window.localStorage.getItem("apiKEY"),
+            'apiURL': window.localStorage.getItem("apiURL1"),
+            'apiKEY': window.localStorage.getItem("apiKEY1"),
             'request': {
-                model: window.localStorage.getItem("MODEL"),
+                model: window.localStorage.getItem("MODEL1"),
                 messages: messages,
             }
         }

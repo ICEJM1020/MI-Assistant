@@ -85,7 +85,7 @@ export async function Summarize(data){
 
 export async function Updkeys(data){
     var res = "";
-    const sys_msg_updkeys = get_sys_msg_updkeys();
+    const sys_msg_updkeys = await get_sys_msg_updkeys();
     const req = {
         model : data.request.model,
         messages : [sys_msg_updkeys, ...data.request.messages]
@@ -107,7 +107,7 @@ export async function Updkeys(data){
     })
     .catch(function (error) {
         const errs = error.response.data.error
-        res = error.status + '\n' + errs.code + ' ' + errs.message;
+        res = error.status + '\n' + error.code + ' ' + error.message;
     });
     return res
 }

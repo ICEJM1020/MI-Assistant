@@ -34,10 +34,10 @@
             name: "addcat-chat",
             event: "asyncevent",
             data: {
-                'apiURL': window.localStorage.getItem("apiURL"),
-                'apiKEY': window.localStorage.getItem("apiKEY"),
+                'apiURL': window.localStorage.getItem("apiURL2"),
+                'apiKEY': window.localStorage.getItem("apiKEY2"),
                 'request':{
-                    model: window.localStorage.getItem("MODEL"),
+                    model: window.localStorage.getItem("MODEL2"),
                     messages: messages.value.reduce((acc, item) => {
                         acc.push( {
                             "role" : item.role,
