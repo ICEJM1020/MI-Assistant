@@ -1,18 +1,23 @@
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
+import ffprobeStatic from 'ffprobe-static';
 import { join } from 'path';
 import { existsSync, mkdirSync, readFileSync, unlinkSync, readdirSync } from 'fs';
 import { tmpdir } from 'os';
 import { app } from 'electron';
 
-// 设置ffmpeg打包后的路径
+// 设置ffmpeg和ffprobe打包后的路径
 let ffmpegPath = ffmpegStatic;
+let ffprobePath = ffprobeStatic.path;
+
 if (app && app.isPackaged) {
     const resourcesPath = process.resourcesPath;
     ffmpegPath = ffmpegPath.replace('app.asar', 'app.asar.unpacked');
+    ffprobePath = ffprobePath.replace('app.asar', 'app.asar.unpacked');
 }
 
 ffmpeg.setFfmpegPath(ffmpegPath);
+ffmpeg.setFfprobePath(ffprobePath);
 
 class VideoProcessor {
     constructor() {

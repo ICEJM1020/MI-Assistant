@@ -6,6 +6,7 @@ const utils = require("@electron-toolkit/utils");
 const axios = require("axios");
 const ffmpeg = require("fluent-ffmpeg");
 const ffmpegStatic = require("ffmpeg-static");
+const ffprobeStatic = require("ffprobe-static");
 const fs$2 = require("fs");
 const os = require("os");
 const { dialog, globalShortcut } = require("electron");
@@ -371,8 +372,6 @@ async function testAPI(data) {
     }
   }).then(function(response) {
     res = response.data.choices[0].message.content;
-    console.log("content: ", response.data.choices[0].message.content || "nothing");
-    console.log("resoning: ", response.data.choices[0].message.reasoning_content || "nothing");
   }).catch(function(error) {
     error.response.data.error;
     res = error.status + "\n" + error.code + " " + error.message;
@@ -398,7 +397,6 @@ async function AddCatChat(data) {
     }
   }).then(function(response) {
     res = response.data.choices[0].message.content;
-    console.log("res: ", response);
   }).catch(function(error) {
     error.response.data.error;
     res = error.status + "\n" + error.code + " " + error.message;
@@ -412,7 +410,6 @@ async function Summarize(data) {
     model: data.request.model,
     messages: [sys_msg_summarize, ...data.request.messages]
   };
-  console.log(req);
   await axios({
     url: data.apiURL,
     method: "POST",
@@ -425,11 +422,9 @@ async function Summarize(data) {
     }
   }).then(function(response) {
     res = response.data.choices[0].message.content;
-    console.log("res: ", response);
   }).catch(function(error) {
     error.response.data.error;
     res = error.status + "\n" + error.code + " " + error.message;
-    console.log(res);
   });
   return res;
 }
@@ -556,11 +551,14 @@ function createAddCatWindow() {
   });
 }
 let ffmpegPath = ffmpegStatic;
+let ffprobePath = ffprobeStatic.path;
 if (electron.app && electron.app.isPackaged) {
   process.resourcesPath;
   ffmpegPath = ffmpegPath.replace("app.asar", "app.asar.unpacked");
+  ffprobePath = ffprobePath.replace("app.asar", "app.asar.unpacked");
 }
 ffmpeg.setFfmpegPath(ffmpegPath);
+ffmpeg.setFfprobePath(ffprobePath);
 class VideoProcessor {
   constructor() {
     this.currentTaskId = null;

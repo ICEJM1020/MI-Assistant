@@ -2,35 +2,54 @@
     import { ref, reactive, onMounted } from 'vue'
     
     const configForm = reactive({
-        apiURL1: '',
-        apiURL2: '',
-        apiKEY1: '',
-        apiKEY2: '',
-        MODEL1: '',
-        MODEL2: '',
+        checkSumApiURL: '',
+        checkSumApiKey: '',
+        checkSumModel: '',
+
+        keyGenApiURL: '',
+        keyGenApiKey: '',
+        keyGenModel: '',
+
+        audio2TextApiKey: '',
+        audio2TextApiSecret: '',
+        audio2TextApiID: '',
+
         summaryModule: '',
     })
     const isLoading1 = ref(false);
     const isLoading2 = ref(false);
     
     const submitForm = () => {
-        window.localStorage.setItem('apiURL1', configForm.apiURL1)
-        window.localStorage.setItem('apiURL2', configForm.apiURL2)
-        window.localStorage.setItem('apiKEY1', configForm.apiKEY1)
-        window.localStorage.setItem('apiKEY2', configForm.apiKEY2)
-        window.localStorage.setItem('MODEL1', configForm.MODEL1)
-        window.localStorage.setItem('MODEL2', configForm.MODEL2)
+        window.localStorage.setItem('checkSumApiURL', configForm.checkSumApiURL)
+        window.localStorage.setItem('checkSumApiKey', configForm.checkSumApiKey)
+        window.localStorage.setItem('checkSumModel', configForm.checkSumModel)
+
+        window.localStorage.setItem('keyGenApiURL', configForm.keyGenApiURL)
+        window.localStorage.setItem('keyGenApiKey', configForm.keyGenApiKey)
+        window.localStorage.setItem('keyGenModel', configForm.keyGenModel)
+
+        window.localStorage.setItem('audio2TextApiKey', configForm.audio2TextApiKey)
+        window.localStorage.setItem('audio2TextApiSecret', configForm.audio2TextApiSecret)
+        window.localStorage.setItem('audio2TextApiID', configForm.audio2TextApiID)
+
         window.localStorage.setItem('summaryModule', configForm.summaryModule)
+
         window.api.invoke('renderer-to-main', {
             name: "save-config",
             event: "event",
             data:{
-                'apiURL1': configForm.apiURL1,
-                'apiURL2': configForm.apiURL2,
-                'apiKEY1': configForm.apiKEY1,
-                'apiKEY2': configForm.apiKEY2,
-                'MODEL1': configForm.MODEL1,
-                'MODEL2': configForm.MODEL2,
+                'checkSumApiURL': configForm.checkSumApiURL,
+                'checkSumApiKey': configForm.checkSumApiKey,
+                'checkSumModel': configForm.checkSumModel,
+
+                'keyGenApiURL': configForm.keyGenApiURL,
+                'keyGenApiKey': configForm.keyGenApiKey,
+                'keyGenModel': configForm.keyGenModel,
+
+                'audio2TextApiKey': configForm.audio2TextApiKey,
+                'audio2TextApiSecret': configForm.audio2TextApiSecret,
+                'audio2TextApiID': configForm.audio2TextApiID,
+
                 'summaryModule': configForm.summaryModule,
             }
         });
@@ -38,26 +57,32 @@
     };
 
     onMounted(() => {
-        configForm.apiURL1 = window.localStorage.getItem("apiURL1");
-        configForm.apiURL2 = window.localStorage.getItem("apiURL2");
-        configForm.apiKEY1 = window.localStorage.getItem("apiKEY1");
-        configForm.apiKEY2 = window.localStorage.getItem("apiKEY2");
-        configForm.MODEL1 = window.localStorage.getItem("MODEL1");
-        configForm.MODEL2 = window.localStorage.getItem("MODEL2");
+        configForm.checkSumApiURL = window.localStorage.getItem("checkSumApiURL");
+        configForm.checkSumApiKey = window.localStorage.getItem("checkSumApiKey");
+        configForm.checkSumModel = window.localStorage.getItem("checkSumModel");
+
+        configForm.keyGenApiURL = window.localStorage.getItem("keyGenApiURL");
+        configForm.keyGenApiKey = window.localStorage.getItem("keyGenApiKey");
+        configForm.keyGenModel = window.localStorage.getItem("keyGenModel");
+
+        configForm.audio2TextApiKey = window.localStorage.getItem('audio2TextApiKey')
+        configForm.audio2TextApiSecret = window.localStorage.getItem('audio2TextApiSecret')
+        configForm.audio2TextApiID = window.localStorage.getItem('audio2TextApiID')
+        
         configForm.summaryModule = window.localStorage.getItem("summaryModule");
     });
 
-    async function testAPI1(){
+    async function testcheckSumApi(){
         console.log("hello");
         isLoading1.value = true;
         const res = await window.api.invoke('renderer-to-main-async', {
             name: "test-api",
             event: "asyncevent",
             data:{
-                'apiURL': configForm.apiURL1,
-                'apiKEY': configForm.apiKEY1,
+                'apiURL': configForm.checkSumApiURL,
+                'apiKEY': configForm.checkSumApiKey,
                 'request':{
-                    model: configForm.MODEL1,
+                    model: configForm.checkSumModel,
                     messages: [
                         {
                             role: "user",
@@ -70,16 +95,16 @@
         alert(res);
         isLoading1.value = false;
     }
-    async function testAPI2(){
+    async function testkeyGenApi(){
         isLoading2.value = true;
         const res = await window.api.invoke('renderer-to-main-async', {
             name: "test-api",
             event: "asyncevent",
             data:{
-                'apiURL': configForm.apiURL2,
-                'apiKEY': configForm.apiKEY2,
+                'apiURL': configForm.keyGenApiURL,
+                'apiKEY': configForm.keyGenApiKey,
                 'request':{
-                    model: configForm.MODEL2,
+                    model: configForm.keyGenModel,
                     messages: [
                         {
                             role: "user",
@@ -104,31 +129,31 @@
         <el-card>
             <template #header>
                 <div>
-                    <span class="section-title">Check & Summary API</span>
+                    <span class="section-title">Check & Summary Chat API</span>
                 </div>
             </template>
             <el-form-item label="apiURL">
                 <el-input 
-                    id="apiURL1"
-                    v-model="configForm.apiURL1"
+                    id="checkSumApiURL"
+                    v-model="configForm.checkSumApiURL"
                     autocomplete="off"
                 />
             </el-form-item>
             <el-form-item label="apiKEY">
                 <el-input
-                    id="apiKEY1"
-                    v-model="configForm.apiKEY1"
+                    id="checkSumApiKey"
+                    v-model="configForm.checkSumApiKey"
                     autocomplete="off"
                 />
             </el-form-item>
             <el-form-item label="MODEL">
                 <el-input
-                    id="MODEL1"
-                    v-model="configForm.MODEL1"
+                    id="checkSumModel"
+                    v-model="configForm.checkSumModel"
                     autocomplete="off"
                 />
             </el-form-item>
-            <el-button type="default" @click="testAPI1()">
+            <el-button type="default" @click="testcheckSumApi()">
                 Test API
             </el-button>
         </el-card>
@@ -136,33 +161,62 @@
         <el-card>
             <template #header>
                 <div>
-                    <span class="section-title">Keypoints Generation API</span>
+                    <span class="section-title">Keypoints Generation Chat API</span>
                 </div>
             </template>
             <el-form-item label="apiURL">
                 <el-input 
-                    id="apiURL2"
-                    v-model="configForm.apiURL2"
+                    id="keyGenApiURL"
+                    v-model="configForm.keyGenApiURL"
                     autocomplete="off"
                 />
             </el-form-item>
             <el-form-item label="apiKEY">
                 <el-input
-                    id="apiKEY2"
-                    v-model="configForm.apiKEY2"
+                    id="keyGenApiKey"
+                    v-model="configForm.keyGenApiKey"
                     autocomplete="off"
                 />
             </el-form-item>
             <el-form-item label="MODEL">
                 <el-input
-                    id="MODEL2"
-                    v-model="configForm.MODEL2"
+                    id="keyGenModel"
+                    v-model="configForm.keyGenModel"
                     autocomplete="off"
                 />
             </el-form-item>
-            <el-button type="default" @click="testAPI2()">
+            <el-button type="default" @click="testkeyGenApi()">
                 Test API
             </el-button>
+        </el-card>
+
+        <el-card>
+            <template #header>
+                <div>
+                    <span class="section-title">Audio2Text API</span>
+                </div>
+            </template>
+            <el-form-item label="apiKEY">
+                <el-input 
+                    id="audio2TextApiKey"
+                    v-model="configForm.audio2TextApiKey"
+                    autocomplete="off"
+                />
+            </el-form-item>
+            <el-form-item label="apiSECRET">
+                <el-input
+                    id="audio2TextApiSecret"
+                    v-model="configForm.audio2TextApiSecret"
+                    autocomplete="off"
+                />
+            </el-form-item>
+            <el-form-item label="apiID">
+                <el-input
+                    id="audio2TextApiID"
+                    v-model="configForm.audio2TextApiID"
+                    autocomplete="off"
+                />
+            </el-form-item>
         </el-card>
 
         <el-card>

@@ -57,9 +57,9 @@ export default {
         this.canvasDisable = canvasStore.canvasDisable;
         this.canvasLine = canvasStore.canvasLine;
 
-        this.APIKey = '8b82b9730a2c117f3deccc41ee7dd2c4';
-        this.APISecret = 'Mzg5OWNmNDMxODk5MDNiMzIyNWZmMDdm';
-        this.APPID = '8301bc30';
+        // this.APIKey = '8b82b9730a2c117f3deccc41ee7dd2c4';
+        // this.APISecret = 'Mzg5OWNmNDMxODk5MDNiMzIyNWZmMDdm';
+        // this.APPID = '8301bc30';
         this.chunks = [];
 
         // 录音相关初始化
@@ -163,9 +163,9 @@ export default {
             const signatureOrigin = `host: ${host}\ndate: ${date}\nGET /v2/iat HTTP/1.1`
 
             // 需要加载crypto-js库
-            const signatureSha = window.CryptoJS.HmacSHA256(signatureOrigin, this.APISecret)
+            const signatureSha = window.CryptoJS.HmacSHA256(signatureOrigin, window.localStorage.getItem('audio2TextApiSecret'))
             const signature = window.CryptoJS.enc.Base64.stringify(signatureSha)
-            const authorizationOrigin = `api_key="${this.APIKey}", algorithm="${algorithm}", headers="${headers}", signature="${signature}"`
+            const authorizationOrigin = `api_key="${window.localStorage.getItem('audio2TextApiKey')}", algorithm="${algorithm}", headers="${headers}", signature="${signature}"`
             const authorization = btoa(authorizationOrigin)
 
             return `${url}?authorization=${authorization}&date=${date}&host=${host}`
@@ -267,7 +267,7 @@ export default {
 
                 const params = {
                     common: {
-                        app_id: this.APPID,
+                        app_id: window.localStorage.getItem('audio2TextApiID'),
                     },
                     business: {
                         language: "zh_cn",
@@ -294,6 +294,7 @@ export default {
                 console.error(e)
                 this.recorder.stop()
                 this.changeBtnStatus("CLOSED")
+                alert("Error: Please make sure your audio2text API is correctly set.")
             }
 
             this.iatWS.onclose = (e) => {
@@ -331,7 +332,12 @@ export default {
         },
         toggleRecording() {
             if (this.btnStatus === "UNDEFINED" || this.btnStatus === "CLOSED") {
-                this.connectWebSocket()
+                try {
+                    this.connectWebSocket();
+                } catch (error)
+                {
+                    alert("Make sure your Audio2Text api is correct.");
+                }
             } else if (this.btnStatus === "CONNECTING" || this.btnStatus === "OPEN") {
                 // 结束录音
                 this.recorder.stop()
