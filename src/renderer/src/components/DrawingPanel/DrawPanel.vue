@@ -37,9 +37,11 @@
                 imageSrc: "",
                 currentImgURL: "",
                 canvasStore: null,
-
+                
                 previousBackgroundID: 0,
                 currentBackgroundID: 0,
+                previousBackgroundName: "0",
+                currentBackgroundName: "0",
                 history: {},
                 currentPatient: "blank",
                 previousPatient: "blank",
@@ -70,6 +72,10 @@
                 const store = useDrawPanelStore();
                 return store.canvasBackground;
             },
+            canvasBackgroundName() {
+                const store = useDrawPanelStore();
+                return store.canvasBackgroundName;
+            },
             patientRawReport() {
                 const store = usePatientInfoStore();
                 return store.rawReport;
@@ -95,15 +101,18 @@
                 this.currentPatient = newValue;
             },
             async canvasBackground(newValue) {
+                const store = useDrawPanelStore();
                 this.previousBackgroundID = this.currentBackgroundID;
+                this.previousBackgroundName = this.currentBackgroundName;
                 this.currentBackgroundID = this.canvasStore.canvasBackgroundID;
+                this.currentBackgroundName = this.canvasStore.canvasBackgroundName;
                 if (this.patientInfoStore.switchPatient) {
-                    this.saveReportData(this.previousPatient, this.previousBackgroundID);
-                    this.saveCanvasData(this.previousPatient, this.previousBackgroundID);
+                    this.saveReportData(this.previousPatient, this.previousBackgroundName);
+                    this.saveCanvasData(this.previousPatient, this.previousBackgroundName);
                 }
-                else this.saveCanvasData(this.currentPatient, this.previousBackgroundID);
+                else this.saveCanvasData(this.currentPatient, this.previousBackgroundName);
                 this.$refs.VueCanvasDrawing.reset();
-
+                
                 if (newValue) {
                     const fitImg = await this.resizeImageToFitCanvas(
                         newValue,
@@ -117,15 +126,16 @@
                 await this.$refs.VueCanvasDrawing.redraw(true);
                 await this.$nextTick();
                 
-                await this.loadCanvasData(this.currentPatient, this.currentBackgroundID);
+                await this.loadCanvasData(this.currentPatient, this.currentBackgroundName);
                 await this.$refs.VueCanvasDrawing.redraw(true);
+                store.isSwitching = false;
             },
             patientRawReport(newVal) {
-                this.saveReportData(this.currentPatient, this.currentBackgroundID);
+                this.saveReportData(this.currentPatient, this.currentBackgroundName);
             },
             patientSummay(newVal) {
                 console.log('summary');
-                this.saveReportData(this.currentPatient, this.currrentBackgroundID);
+                this.saveReportData(this.currentPatient, this.currrentBackgroundName);
             },
         },
         mounted() {
@@ -189,15 +199,15 @@
                     clearTimeout(this.saveTimeout);
                 }
                 this.saveTimeout = setTimeout(() => {
-                    this.saveCanvasData(this.currentPatient, this.currentBackgroundID);
+                    this.saveCanvasData(this.currentPatient, this.currentBackgroundName);
                 }, 500);
             },
-            saveCanvasData(patient, id) {
+            saveCanvasData(patient, name) {
                 const drawer = this.$refs.VueCanvasDrawing;
                 const canvasStrokes = JSON.parse(JSON.stringify(drawer.getAllStrokes()));
                 const canvasImages = JSON.parse(JSON.stringify(drawer.images));
                 const canvasTrash = JSON.parse(JSON.stringify(drawer.trash));
-                this.history[id] = {
+                this.history[name] = {
                     strokes: canvasStrokes,
                     images: canvasImages,
                     trash: canvasTrash,
@@ -224,7 +234,7 @@
                     }
                 });
             },
-            async loadCanvasData(patient, id) {
+            async loadCanvasData(patient, name) {
                 this.history = await window.api.invoke('renderer-to-main-async', {
                     name: "load-history",
                     event: "asyncevent",
@@ -233,7 +243,7 @@
                     }
                 });
                 const drawer = this.$refs.VueCanvasDrawing;
-                const canvasData = this.history[id] || {
+                const canvasData = this.history[name] || {
                     strokes: [],
                     images: [],
                     trash: [],
@@ -245,8 +255,8 @@
                 if (event.ctrlKey) {
                     const drawer = this.$refs.VueCanvasDrawing;
                     if (event.key === 's' || event.ket === 'S') {
-                        this.saveCanvasData(this.currentPatient, this.currentBackgroundID);
-                        this.saveReportData(this.currentPatient, this.currentBackgroundID);
+                        this.saveCanvasData(this.currentPatient, this.currentBackgroundName);
+                        this.saveReportData(this.currentPatient, this.currentBackgroundName);
                     }
                     if (!this.canvasActive) return;
                     if (event.key === 'z' || event.key === 'Z') drawer.undo();

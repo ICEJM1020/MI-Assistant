@@ -29,6 +29,7 @@ export default {
             canvasLine: 5,
             canvasBackgroundImages: [],
             canvasBackgroundId: 0,
+            canvasBackgroundNames: [],
             strokes: [],
             
             btnStatus: "UNDEFINED", // "UNDEFINED" "CONNECTING" "OPEN" "CLOSING" "CLOSED"
@@ -44,6 +45,9 @@ export default {
             videoProgress: 0,
             videoProgressMessage: '',
             isVideoProcessing: false,
+
+            start: 0,
+            end: 0,
         };
     },
     mounted() {
@@ -353,6 +357,9 @@ export default {
             this.$refs.videoInput.click();
         },
         setImage(event) {
+            if (!event.target.files.length) return;
+            
+            this.canvasStore.isSwitching = false;
             const files = Array.from(event.target.files);
             if (!files.length) return;
             this.canvasBackgroundImages = [];
@@ -364,15 +371,24 @@ export default {
             let URL = window.URL;
             for (let i = 0; i < imgFiles.length; ++i) {
                 const file = URL.createObjectURL(imgFiles[i]);
+                const fileName = imgFiles[i].name;
                 this.canvasBackgroundImages.push(file);
+                this.canvasBackgroundNames.push(fileName);
             }
             // 切换病人的一系列设置
             this.patientInfoStore.setSwitchPatient(true);
             this.canvasStore.setCanvasBackgroundID(0);
             this.canvasStore.setCanvasBackground(this.canvasBackgroundImages[0]);
+            this.canvasStore.setCanvasBackgroundName(this.canvasBackgroundNames[0]);
             this.canvasBackgroundId = 0;
+
+            // 将视频选择器的value置空
+            this.$refs.videoInput.value = '';
         },
         setVideo(event) {
+            if (!event.target.files.length) return;
+
+            this.canvasStore.isSwitching = false;
             const file = event.target.files[0];
 
             // 显示进度
@@ -388,9 +404,11 @@ export default {
             this.patientInfoStore.setCurrentPatient(fileName);
 
             this.extractVideoFrames(file.path);
+            // 将文件夹选择器的value置空
+            this.$refs.fileInput.value = '';
         },
         async extractVideoFrames(videoPath) {
-            try {                
+            try {
                 const result = await window.api.invoke('renderer-to-main-async', {
                     name: "extract-video-frames",
                     event: "asyncevent",
@@ -401,13 +419,25 @@ export default {
                     if (!result.data || !result.data.frames)
                         throw new Error('No frames');
                     
+                    // 将base64转换为blob URL
+                    for (let i = 0; i < result.data.frames.length; ++i) {
+                        const base64Data = result.data.frames[i];
+                        const byteString = atob(base64Data.split(',')[1]);
+                        const bytes = new Uint8Array(byteString.length);
+                        for (let i = 0; i < byteString.length; i++) {
+                            bytes[i] = byteString.charCodeAt(i);
+                        }
+                        const blob = new Blob([bytes], { type: 'image/jpeg' });
+                        const blobUrl = URL.createObjectURL(blob);
+                        this.canvasBackgroundImages.push(blobUrl);
+                        this.canvasBackgroundNames.push(i.toString())
+                    }
+                    
                     // 切换病人的一系列设置
-                    this.canvasBackgroundImages = result.data.frames;
                     this.patientInfoStore.setSwitchPatient(true);
                     this.canvasStore.setCanvasBackgroundID(0);
-                    if (this.canvasBackgroundImages.length > 0) {
-                        this.canvasStore.setCanvasBackground(this.canvasBackgroundImages[0]);
-                    }
+                    this.canvasStore.setCanvasBackground(this.canvasBackgroundImages[0]);
+                    this.canvasStore.setCanvasBackgroundName(this.canvasBackgroundNames[0]);
                     this.canvasBackgroundId = 0;
                     
                     this.videoProgressMessage = `Successfully extracted ${result.data.totalFrames} frames`;
@@ -426,7 +456,6 @@ export default {
                         this.isVideoProcessing = false;
                     }, 2000);
                 }
-                
             } catch (error) {
                 console.error('Video extraction failed:', error);
                 
@@ -452,7 +481,6 @@ export default {
                 this.isVideoProcessing = false;
                 this.videoProgress = 0;
                 this.videoProgressMessage = '';
-                
             } catch (error) {
                 console.error('Failed to cancel video extraction:', error);
             }
@@ -485,39 +513,26 @@ export default {
                     console.error('Unknown progress type:', progress);
             }
         },
-        _loadPreviousImage() {
+        loadPreviousImage() {
+            if (this.canvasStore.isSwitching) return;
             if (this.canvasBackgroundId - 1 < 0) return;
-            if (this.isSwitching) return;
+            this.canvasStore.isSwitching = true;
             
-            this.isSwitching = true;
             let idex = --this.canvasBackgroundId;
             this.canvasStore.setCanvasBackground(this.canvasBackgroundImages[idex]);
+            this.canvasStore.setCanvasBackgroundName(this.canvasBackgroundNames[idex]);
             this.canvasStore.setCanvasBackgroundID(idex);
-            
-            setTimeout(() => {
-                this.isSwitching = false;
-            }, 500);
         },
-        _loadNextImage() {
+        loadNextImage() {
+            if (this.canvasStore.isSwitching) return;
             if (this.canvasBackgroundId + 1 >= this.canvasBackgroundImages.length) return;
-            if (this.isSwitching) return;
+            this.canvasStore.isSwitching = true;
             
-            this.isSwitching = true;
             let idex = ++this.canvasBackgroundId;
             this.canvasStore.setCanvasBackground(this.canvasBackgroundImages[idex]);
+            this.canvasStore.setCanvasBackgroundName(this.canvasBackgroundNames[idex]);
             this.canvasStore.setCanvasBackgroundID(idex);
-            
-            setTimeout(() => {
-                this.isSwitching = false;
-            }, 500);
         },
-        loadPreviousImage: debounce(function() {
-            this._loadPreviousImage();
-        }, 300),
-        
-        loadNextImage: debounce(function() {
-            this._loadNextImage();
-        }, 300),
         exportImage() {
             const link = document.createElement('a');
             link.href = this.canvasStore.currentImgURL;
