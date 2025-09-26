@@ -38,7 +38,7 @@ import {useTestListStore} from '@store/index'
   <div class="common-layout layout-style">
     <el-container class="layout-style">
       <el-header class="header style-color-2">
-          Medical Image Labeling Assistant
+          Medical Image Ailignment Assistant
       </el-header>
       <el-main class="main-area">
         <el-row :gutter="20" class="main-row">
